@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel Sender</title>
+
+<style>
+body{
+margin:0;
+font-family:Arial;
+background:#0b1220;
+color:#fff;
+display:flex;
+}
+
+/* sidebar */
+.sidebar{
+width:160px;
+background:#0f172a;
+padding:15px;
+height:100vh;
+}
+
+.sidebar button{
+width:100%;
+padding:10px;
+margin-bottom:10px;
+border:0;
+border-radius:8px;
+background:#1e293b;
+color:white;
+cursor:pointer;
+}
+
+.sidebar button:hover{
+background:#38bdf8;
+}
+
+/* main */
+.main{
+flex:1;
+padding:15px;
+}
+
+/* box */
+.box{
+background:#111827;
+padding:12px;
+border-radius:10px;
+margin-bottom:10px;
+}
+
+input,textarea{
+width:100%;
+padding:10px;
+margin-top:5px;
+border:none;
+border-radius:6px;
+background:#0b1220;
+color:white;
+}
+
+/* button */
+.btn{
+width:100%;
+padding:10px;
+border:none;
+border-radius:8px;
+cursor:pointer;
+margin-top:8px;
+}
+
+.green{background:#22c55e;}
+.red{background:#ef4444;}
+.blue{background:#38bdf8;}
+
+/* target */
+.target{
+background:#0b1220;
+padding:10px;
+border-radius:8px;
+margin-top:8px;
+position:relative;
+}
+
+/* delete */
+.del{
+position:absolute;
+top:5px;
+right:5px;
+background:#ef4444;
+border:none;
+color:white;
+font-size:12px;
+padding:4px 8px;
+border-radius:5px;
+cursor:pointer;
+}
+
+/* status */
+#status{
+padding:10px;
+background:#0f172a;
+border-radius:8px;
+text-align:center;
+margin-top:10px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="sidebar">
+<button onclick="show('send')">Send</button>
+<button onclick="show('history')">History</button>
+</div>
+
+<div class="main">
+
+<!-- LOGIN -->
+<div class="box">
+<h3>Login</h3>
+<input id="api_id" placeholder="API ID">
+<input id="api_hash" placeholder="API HASH">
+<input id="phone" placeholder="+62xxxx">
+
+<button class="btn blue" onclick="sendCode()">Kirim OTP</button>
+
+<input id="code" placeholder="OTP">
+<button class="btn blue" onclick="login()">Login</button>
+</div>
+
+<!-- SEND -->
+<div id="send">
+
+<div class="box">
+<h3>Pesan</h3>
+<div id="targets"></div>
+<button class="btn green" onclick="addTarget()">+ Tambah Pesan</button>
+</div>
+
+<div class="box">
+<h3>Control</h3>
+<input id="delay" placeholder="Delay (detik)">
+<button class="btn green" onclick="start()">START</button>
+<button class="btn red" onclick="stop()">STOP</button>
+</div>
+
+<div id="status">Status: idle</div>
+
+</div>
+
+</div>
+
+<script>
+const BASE="http://127.0.0.1:5000";
+
+function show(id){
+document.getElementById("send").style.display=id==="send"?"block":"none";
+}
+
+function addTarget(){
+let div=document.createElement("div");
+div.className="target";
+
+div.innerHTML=`
+<textarea placeholder="Pesan"></textarea>
+<input placeholder="@group1,@group2">
+<button class="del" onclick="this.parentElement.remove()">hapus</button>
+`;
+
+document.getElementById("targets").appendChild(div);
+}
+
+function setStatus(t){
+document.getElementById("status").innerText="Status: "+t;
+}
+
+/* API */
+async function post(url,data){
+let r=await fetch(BASE+url,{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify(data)
+});
+return r.json();
+}
+
+async function sendCode(){
+setStatus("kirim OTP...");
+let r=await post("/send_code",{
+api_id:api_id.value,
+api_hash:api_hash.value,
+phone:phone.value
+});
+setStatus(r.message);
+}
+
+async function login(){
+setStatus("login...");
+let r=await post("/verify",{code:code.value});
+setStatus(r.message);
+}
+
+async function start(){
+
+let targets=[];
+
+document.querySelectorAll(".target").forEach(t=>{
+targets.push({
+message:t.children[0].value,
+groups:t.children[1].value.split(",")
+});
+});
+
+await post("/start",{
+targets:targets,
+delay:delay.value,
+client_id:"user1"
+});
+
+setStatus("running...");
+}
+
+async function stop(){
+await fetch(BASE+"/stop");
+setStatus("stopped");
+}
+</script>
+
+</body>
+</html>
